@@ -11,12 +11,10 @@
 </ion-header>
 
 <ion-content [fullscreen]="true">
-
   <main class="page-shell">
 
     <!-- WELCOME SCREEN -->
     <section *ngIf="!joined" class="welcome">
-
       <div class="hero-icon">
         <ion-icon name="videocam"></ion-icon>
       </div>
@@ -33,7 +31,6 @@
       </p>
 
       <div class="join-card">
-
         <ion-item lines="none" class="field">
           <ion-label position="stacked">Your name</ion-label>
           <ion-input
@@ -58,13 +55,8 @@
           (click)="joinRoom()"
           [disabled]="connecting || joined || !roomId.trim()">
 
-          <ion-spinner
-            *ngIf="connecting"
-            name="crescent">
-          </ion-spinner>
-
+          <ion-spinner *ngIf="connecting" name="crescent"></ion-spinner>
           <span *ngIf="!connecting">Join meeting</span>
-
         </ion-button>
 
         <div class="or">
@@ -80,152 +72,123 @@
           (click)="createRoom()"
           [disabled]="connecting || joined">
 
-          <ion-spinner
-            *ngIf="connecting"
-            name="crescent">
-          </ion-spinner>
-
+          <ion-spinner *ngIf="connecting" name="crescent"></ion-spinner>
           <span *ngIf="!connecting">Create a new meeting</span>
-
         </ion-button>
-
       </div>
 
       <p class="privacy-note">
         Your camera and microphone are only requested when you join a meeting.
       </p>
-
     </section>
 
     <!-- MEETING SCREEN -->
     <section *ngIf="joined" class="meeting">
 
+      <!-- MEETING HEADER -->
       <div class="meeting-top">
-
-        <div>
+        <div class="meeting-heading">
           <p class="eyebrow">LIVE MEETING</p>
           <h2>You're in the room</h2>
 
-          <!-- CALL DURATION -->
           <div class="call-duration">
             <span class="duration-dot"></span>
             <span>{{ formattedCallDuration }}</span>
           </div>
-
         </div>
 
-        <button
-          class="code-chip"
-          (click)="copyRoom()">
-
+        <button class="code-chip" (click)="copyRoom()">
           <span>{{ roomId }}</span>
           <ion-icon name="copy"></ion-icon>
-
         </button>
-
       </div>
 
-      <!-- MAIN VIDEO -->
-      <div class="video-call-stage">
+      <!-- VIDEO MEETING STAGE -->
+      <div class="video-stage">
 
-        <div class="main-video-container">
-
-          <video
-            #mainVideo
-            autoplay
-            playsinline>
-          </video>
+        <!-- REMOTE PARTICIPANTS -->
+        <div
+          class="video-grid"
+          *ngIf="remoteParticipants.length > 0">
 
           <div
-            class="waiting-message"
-            *ngIf="!activeSpeaker">
+            class="video-tile"
+            *ngFor="let peer of remoteParticipants; trackBy: trackParticipant">
 
-            <ion-icon name="people"></ion-icon>
+            <video
+              [srcObject]="peer.stream"
+              autoplay
+              playsinline>
+            </video>
 
-            <h3>Waiting for someone to join</h3>
-
-            <p>Share your meeting code with others.</p>
-
+            <div class="tile-caption">
+              <span>{{ peer.name }}</span>
+              <span
+                class="speaking-dot"
+                *ngIf="activeSpeaker?.id === peer.id">
+              </span>
+            </div>
           </div>
-
-          <div
-            class="main-video-caption"
-            *ngIf="activeSpeaker">
-
-            {{ activeSpeaker.name }}
-
-            <span class="speaking-indicator">
-              <span></span>
-              Live
-            </span>
-
-          </div>
-
         </div>
 
-        <!-- FLOATING SELF VIDEO -->
-        <div class="floating-self">
+        <!-- WAITING MESSAGE -->
+        <div
+          class="waiting-message"
+          *ngIf="remoteParticipants.length === 0">
+
+          <ion-icon name="people"></ion-icon>
+          <h3>Waiting for someone to join</h3>
+          <p>Share your meeting code with others.</p>
+        </div>
+
+        <!-- YOUR DRAGGABLE FLOATING VIDEO -->
+        <div
+          class="local-preview"
+          #localPreview
+          [class.dragging]="isDraggingLocalPreview"
+          [style.left.px]="localPreviewX"
+          [style.top.px]="localPreviewY"
+          [style.right]="localPreviewX === null ? null : 'auto'"
+          [style.bottom]="localPreviewY === null ? null : 'auto'"
+          (pointerdown)="startLocalVideoDrag($event)"
+          (pointermove)="moveLocalVideo($event)"
+          (pointerup)="endLocalVideoDrag($event)"
+          (pointercancel)="endLocalVideoDrag($event)"
+          (lostpointercapture)="endLocalVideoDrag($event)">
 
           <video
             #localVideo
             autoplay
             muted
-            playsinline>
+            playsinline
+            [class.front-camera]="isFrontCamera"
+            [class.back-camera]="!isFrontCamera">
           </video>
 
-          <div class="self-caption">
+          <!-- CAMERA OFF PLACEHOLDER -->
+          <div
+            class="video-placeholder"
+            *ngIf="cameraOff">
 
+            <ion-icon name="videocam-off"></ion-icon>
+            <span>Camera off</span>
+          </div>
+
+          <div class="local-caption">
             <span>You</span>
 
-            <ion-icon
-              *ngIf="muted"
-              name="mic-off">
-            </ion-icon>
-
-            <ion-icon
-              *ngIf="cameraOff"
-              name="videocam-off">
-            </ion-icon>
-
+            <div class="local-status-icons">
+              <ion-icon *ngIf="muted" name="mic-off"></ion-icon>
+              <ion-icon *ngIf="cameraOff" name="videocam-off"></ion-icon>
+            </div>
           </div>
-
         </div>
-
       </div>
 
-      <!-- OTHER PARTICIPANTS -->
-      <div
-        class="participant-strip"
-        *ngIf="remoteParticipants.length > 1">
-
-        <ng-container
-          *ngFor="let peer of remoteParticipants">
-
-          <div
-            class="mini-participant"
-            *ngIf="peer.id !== activeSpeaker?.id">
-
-            <video
-              [srcObject]="peer.stream"
-              autoplay
-              playsinline
-              muted>
-            </video>
-
-            <span>{{ peer.name }}</span>
-
-          </div>
-
-        </ng-container>
-
-      </div>
-
+      <!-- PARTICIPANT COUNT -->
       <div class="participant-line">
-
         <ion-icon name="people"></ion-icon>
-
         {{ participants.length || 1 }} participant(s)
-
       </div>
 
       <!-- CALL CONTROLS -->
@@ -236,12 +199,8 @@
           [class.active]="muted"
           (click)="toggleMic()">
 
-          <ion-icon
-            [name]="muted ? 'mic-off' : 'mic'">
-          </ion-icon>
-
+          <ion-icon [name]="muted ? 'mic-off' : 'mic'"></ion-icon>
           <span>{{ muted ? 'Unmute' : 'Mute' }}</span>
-
         </button>
 
         <button
@@ -249,14 +208,8 @@
           [class.active]="cameraOff"
           (click)="toggleCamera()">
 
-          <ion-icon
-            [name]="cameraOff ? 'videocam-off' : 'videocam'">
-          </ion-icon>
-
-          <span>
-            {{ cameraOff ? 'Start video' : 'Stop video' }}
-          </span>
-
+          <ion-icon [name]="cameraOff ? 'videocam-off' : 'videocam'"></ion-icon>
+          <span>{{ cameraOff ? 'Start video' : 'Stop video' }}</span>
         </button>
 
         <button
@@ -265,9 +218,7 @@
           [disabled]="switchingCamera">
 
           <ion-icon name="camera-reverse"></ion-icon>
-
-          <span>Flip</span>
-
+          <span>{{ switchingCamera ? 'Switching' : 'Flip' }}</span>
         </button>
 
         <button
@@ -275,15 +226,10 @@
           (click)="leaveRoom()">
 
           <ion-icon name="call"></ion-icon>
-
           <span>Leave</span>
-
         </button>
-
       </div>
-
     </section>
-
   </main>
 
   <ion-toast
@@ -293,5 +239,4 @@
     position="bottom"
     (didDismiss)="toastMessage = ''">
   </ion-toast>
-
 </ion-content>
